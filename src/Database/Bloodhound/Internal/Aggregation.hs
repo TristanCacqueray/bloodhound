@@ -60,14 +60,12 @@ instance ToJSON Aggregation where
 
   toJSON (DateHistogramAgg
           (DateHistogramAggregation field interval format
-           preZone postZone preOffset postOffset dateHistoAggs)) =
+           minDoc bounds dateHistoAggs)) =
     omitNulls ["date_histogram" .= omitNulls [ "field"       .= field,
                                                "interval"    .= interval,
                                                "format"      .= format,
-                                               "pre_zone"    .= preZone,
-                                               "post_zone"   .= postZone,
-                                               "pre_offset"  .= preOffset,
-                                               "post_offset" .= postOffset
+                                               "min_doc_count"   .= minDoc,
+                                               "extended_bounds" .= bounds
                                              ],
                "aggs"           .= dateHistoAggs ]
   toJSON (ValueCountAgg a) = object ["value_count" .= v]
@@ -125,15 +123,21 @@ data CardinalityAggregation = CardinalityAggregation
     precisionThreshold :: Maybe Int
   } deriving (Eq, Show)
 
+data DateHistoExtendedBouund = DateHistoExtendedBouund
+  { dateExtendedMin :: UTCTime
+  , dateExtendedMax :: UTCTime
+  } deriving (Eq, Show)
+
+instance ToJSON DateHistoExtendedBouund where
+  toJSON (DateHistoExtendedBouund min' max') =
+    omitNulls ["min" .= min', "max" .= max']
+
 data DateHistogramAggregation = DateHistogramAggregation
   { dateField      :: FieldName
   , dateInterval   :: Interval
   , dateFormat     :: Maybe Text
-    -- pre and post deprecated in 1.5
-  , datePreZone    :: Maybe Text
-  , datePostZone   :: Maybe Text
-  , datePreOffset  :: Maybe Text
-  , datePostOffset :: Maybe Text
+  , dateMinDocCount :: Maybe Int
+  , dateExtendedBounds :: Maybe DateHistoExtendedBouund
   , dateAggs       :: Maybe Aggregations
   } deriving (Eq, Show)
 
@@ -192,7 +196,7 @@ mkTermsScriptAggregation :: Text -> TermsAggregation
 mkTermsScriptAggregation t = TermsAggregation (Right t) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 mkDateHistogram :: FieldName -> Interval -> DateHistogramAggregation
-mkDateHistogram t i = DateHistogramAggregation t i Nothing Nothing Nothing Nothing Nothing Nothing
+mkDateHistogram t i = DateHistogramAggregation t i Nothing Nothing Nothing Nothing
 
 mkCardinalityAggregation :: FieldName -> CardinalityAggregation
 mkCardinalityAggregation t = CardinalityAggregation t Nothing
